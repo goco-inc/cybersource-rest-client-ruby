@@ -138,8 +138,8 @@ module {{moduleName}}
 	# set merchantConfig 
 	def set_configuration(config)
 	   require_relative '../../AuthenticationSDK/core/MerchantConfig.rb'
-	   $merchantconfig_obj = Merchantconfig.new(config)
-	   @config.host = $merchantconfig_obj.requestHost
+	   @merchantconfig_obj = Merchantconfig.new(config)
+	   @config.host = @merchantconfig_obj.requestHost
 	end
 	# Calling Authentication
     def CallAuthenticationHeader(http_method, path, body_params, header_params, query_params)
@@ -148,26 +148,26 @@ module {{moduleName}}
       request_target = get_query_param(path, query_params)
       # Request Type. [Non-Editable]
       request_type = http_method.to_s
-      log_obj = Log.new $merchantconfig_obj.logDirectory, $merchantconfig_obj.logFilename, $merchantconfig_obj.logSize, $merchantconfig_obj.enableLog
+      log_obj = Log.new @merchantconfig_obj.logDirectory, @merchantconfig_obj.logFilename, @merchantconfig_obj.logSize, @merchantconfig_obj.enableLog
       # Set Request Type into the merchant config object.
-      $merchantconfig_obj.requestType = request_type
+      @merchantconfig_obj.requestType = request_type
       # Set Request Target into the merchant config object.
-      $merchantconfig_obj.requestTarget = request_target
+      @merchantconfig_obj.requestTarget = request_target
       # Construct the URL.
-      url = Constants::HTTPS_URI_PREFIX + $merchantconfig_obj.requestHost + $merchantconfig_obj.requestTarget
+      url = Constants::HTTPS_URI_PREFIX + @merchantconfig_obj.requestHost + @merchantconfig_obj.requestTarget
       # set Request Json to Merchant config object
-      $merchantconfig_obj.requestJsonData = body_params
+      @merchantconfig_obj.requestJsonData = body_params
       # Set URL into the merchant config object.
-      $merchantconfig_obj.requestUrl = url
+      @merchantconfig_obj.requestUrl = url
       # Calling APISDK, Apisdk.controller.
       gmtDateTime = DateTime.now.httpdate
-      token = Authorization.new.getToken($merchantconfig_obj, gmtDateTime, log_obj)
+      token = Authorization.new.getToken(@merchantconfig_obj, gmtDateTime, log_obj)
       # HTTP header 'Accept' (if needed)
-      if $merchantconfig_obj.authenticationType.upcase == Constants::AUTH_TYPE_HTTP
+      if @merchantconfig_obj.authenticationType.upcase == Constants::AUTH_TYPE_HTTP
         # Appending headers for Get Connection
-        header_params['v-c-merchant-id'] = $merchantconfig_obj.merchantId
+        header_params['v-c-merchant-id'] = @merchantconfig_obj.merchantId
         header_params['Date'] = gmtDateTime
-        header_params['Host'] = $merchantconfig_obj.requestHost
+        header_params['Host'] = @merchantconfig_obj.requestHost
         header_params['Signature'] = token
         if request_type == Constants::POST_REQUEST_TYPE || request_type == Constants::PUT_REQUEST_TYPE || request_type == Constants::PATCH_REQUEST_TYPE
           digest = DigestGeneration.new.generateDigest(body_params, log_obj)
@@ -175,7 +175,7 @@ module {{moduleName}}
           header_params['Digest'] = digest_payload
         end
       end
-      if $merchantconfig_obj.authenticationType.upcase == Constants::AUTH_TYPE_JWT
+      if @merchantconfig_obj.authenticationType.upcase == Constants::AUTH_TYPE_JWT
         token = "Bearer " + token
         header_params['Authorization'] = token
       end

@@ -51,13 +51,13 @@ module CyberSource
       response = request.run
 
       if @config.debugging
-		begin
-		raise
-			@config.logger.debug "HTTP response body ~BEGIN~\n#{response.body}\n~END~\n"
-		rescue
-			puts 'Cannot write to log'			
-		end
-	  end
+        begin
+          raise
+          @config.logger.debug "HTTP response body ~BEGIN~\n#{response.body}\n~END~\n"
+        rescue
+          puts 'Cannot write to log'			
+        end
+	    end
 
       unless response.success?
         if response.timed_out?
@@ -95,7 +95,7 @@ module CyberSource
       url = build_request_url(path)
       body_params = opts[:body] || {}
       query_params = opts[:query_params] || {}
-	  if !query_params.empty?
+	    if !query_params.empty?
         query_params = URI.encode_www_form(query_params)
       end
       headers = CallAuthenticationHeader(http_method, path, body_params, opts[:header_params], query_params)
@@ -127,52 +127,62 @@ module CyberSource
         req_body = build_request_body(header_params, form_params, opts[:body])
         req_opts.update :body => req_body
         if @config.debugging
-			begin
-			raise
-				@config.logger.debug "HTTP request body param ~BEGIN~\n#{req_body}\n~END~\n"
-			rescue
-				puts 'Cannot write to log'
-			end
-		end
+          begin
+          raise
+            @config.logger.debug "HTTP request body param ~BEGIN~\n#{req_body}\n~END~\n"
+          rescue
+            puts 'Cannot write to log'
+          end
+        end
       end
 
       request = Typhoeus::Request.new(url, req_opts)
       download_file(request) if opts[:return_type] == 'File'
       request
     end
-  # set merchantConfig 
-  def set_configuration(config)
-     require_relative '../AuthenticationSDK/core/MerchantConfig.rb'
-     $merchantconfig_obj = Merchantconfig.new(config)
-     @config.host = $merchantconfig_obj.requestHost
-  end
-  # Calling Authentication
+
+    # set merchantConfig 
+    def set_configuration(config)
+      require_relative '../AuthenticationSDK/core/MerchantConfig.rb'
+      @merchantconfig_obj = Merchantconfig.new(config)
+      @config.host = @merchantconfig_obj.requestHost
+    end
+
+    def merchant_config
+      @merchantconfig_obj
+    end
+
+    # Calling Authentication
     def CallAuthenticationHeader(http_method, path, body_params, header_params, query_params)
       require_relative '../AuthenticationSDK/core/Authorization.rb'
       require_relative '../AuthenticationSDK/authentication/payloadDigest/digest.rb'
       request_target = get_query_param(path, query_params)
       # Request Type. [Non-Editable]
       request_type = http_method.to_s
-      log_obj = Log.new $merchantconfig_obj.logDirectory, $merchantconfig_obj.logFilename, $merchantconfig_obj.logSize, $merchantconfig_obj.enableLog
+      log_obj = if @merchantconfig_obj&.enableLog
+        Log.new(@merchantconfig_obj.logDirectory, @merchantconfig_obj.logFilename, @merchantconfig_obj.logSize, @merchantconfig_obj.enableLog)
+      else
+        nil
+      end
       # Set Request Type into the merchant config object.
-      $merchantconfig_obj.requestType = request_type
+      @merchantconfig_obj.requestType = request_type
       # Set Request Target into the merchant config object.
-      $merchantconfig_obj.requestTarget = request_target
+      @merchantconfig_obj.requestTarget = request_target
       # Construct the URL.
-      url = Constants::HTTPS_URI_PREFIX + $merchantconfig_obj.requestHost + $merchantconfig_obj.requestTarget
+      url = Constants::HTTPS_URI_PREFIX + @merchantconfig_obj.requestHost + @merchantconfig_obj.requestTarget
       # set Request Json to Merchant config object
-      $merchantconfig_obj.requestJsonData = body_params
+      @merchantconfig_obj.requestJsonData = body_params
       # Set URL into the merchant config object.
-      $merchantconfig_obj.requestUrl = url
+      @merchantconfig_obj.requestUrl = url
       # Calling APISDK, Apisdk.controller.
       gmtDateTime = DateTime.now.httpdate
-      token = Authorization.new.getToken($merchantconfig_obj, gmtDateTime, log_obj)
+      token = Authorization.new.getToken(@merchantconfig_obj, gmtDateTime, log_obj)
       # HTTP header 'Accept' (if needed)
-      if $merchantconfig_obj.authenticationType.upcase == Constants::AUTH_TYPE_HTTP
+      if @merchantconfig_obj.authenticationType.upcase == Constants::AUTH_TYPE_HTTP
         # Appending headers for Get Connection
-        header_params['v-c-merchant-id'] = $merchantconfig_obj.merchantId
+        header_params['v-c-merchant-id'] = @merchantconfig_obj.merchantId
         header_params['Date'] = gmtDateTime
-        header_params['Host'] = $merchantconfig_obj.requestHost
+        header_params['Host'] = @merchantconfig_obj.requestHost
         header_params['Signature'] = token
         if request_type == Constants::POST_REQUEST_TYPE || request_type == Constants::PUT_REQUEST_TYPE || request_type == Constants::PATCH_REQUEST_TYPE
           digest = DigestGeneration.new.generateDigest(body_params, log_obj)
@@ -180,7 +190,7 @@ module CyberSource
           header_params['Digest'] = digest_payload
         end
       end
-      if $merchantconfig_obj.authenticationType.upcase == Constants::AUTH_TYPE_JWT
+      if @merchantconfig_obj.authenticationType.upcase == Constants::AUTH_TYPE_JWT
         token = "Bearer " + token
         header_params['Authorization'] = token
       end
@@ -189,6 +199,7 @@ module CyberSource
       end
       return header_params
     end
+
     def get_query_param(path, query_params)
       request_target = ''
       if !query_params.empty?

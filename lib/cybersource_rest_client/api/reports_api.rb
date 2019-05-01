@@ -18,8 +18,13 @@ module CyberSource
 
     def initialize(api_client = ApiClient.default, config)
       @api_client = api_client
-	  @api_client.set_configuration(config)
+	    @api_client.set_configuration(config)
     end
+
+    def merchant_config
+      @api_client.merchant_config
+    end
+
     # Create Adhoc Report
     # Create a one-time report. You must specify the type of report in reportDefinitionName. For a list of values for reportDefinitionName, see the [Reporting Developer Guide](https://www.cybersource.com/developers/documentation/reporting_and_reconciliation) 
     # @param request_body Report subscription request payload
