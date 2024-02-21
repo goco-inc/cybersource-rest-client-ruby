@@ -15,7 +15,7 @@ require 'json'
 require 'logger'
 require 'tempfile'
 require 'typhoeus'
-require 'uri'
+require 'addressable/uri'
 
 module CyberSource
   class ApiClient
@@ -55,7 +55,7 @@ module CyberSource
           raise
           @config.logger.debug "HTTP response body ~BEGIN~\n#{response.body}\n~END~\n"
         rescue
-          puts 'Cannot write to log'			
+          puts 'Cannot write to log'
         end
 	    end
 
@@ -96,7 +96,7 @@ module CyberSource
       body_params = opts[:body] || {}
       query_params = opts[:query_params] || {}
 	    if !query_params.empty?
-        query_params = URI.encode_www_form(query_params)
+        query_params = Addressable::URI.form_encode(query_params)
       end
       headers = CallAuthenticationHeader(http_method, path, body_params, opts[:header_params], query_params)
       http_method = http_method.to_sym.downcase
@@ -141,7 +141,7 @@ module CyberSource
       request
     end
 
-    # set merchantConfig 
+    # set merchantConfig
     def set_configuration(config)
       require_relative '../AuthenticationSDK/core/MerchantConfig.rb'
       @merchantconfig_obj = Merchantconfig.new(config)
@@ -209,7 +209,7 @@ module CyberSource
       end
       request_target
     end
-  
+
     # Check if the given MIME is a JSON MIME.
     # JSON MIME examples:
     #   application/json
@@ -346,7 +346,7 @@ module CyberSource
     def build_request_url(path)
       # Add leading and trailing slashes to path
       path = "/#{path}".gsub(/\/+/, '/')
-      URI.encode(@config.base_url + path)
+      Addressable::URI.encode(@config.base_url + path)
     end
 
     # Builds the HTTP request body
