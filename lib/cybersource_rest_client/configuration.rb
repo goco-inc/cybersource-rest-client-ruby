@@ -175,7 +175,7 @@ module CyberSource
 
     def base_url
       url = "#{scheme}://#{[host, base_path].join('/').gsub(/\/+/, '/')}".sub(/\/+\z/, '')
-      Adressable::URI.encode(url)
+      Addressable::URI.encode(url)
     end
 
     # Gets API key (with prefix if set).
