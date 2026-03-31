@@ -1,113 +1,115 @@
-// This file is generated from the template here: https://github.intuit.com/dev-patterns/automation-java-library-ists
-// Docs for `ibp-libraries` is here: https://github.intuit.com/dev-build/jenkins-shared-libraries
 @Library(value='ibp-libraries', changelog=false) _
 
 def config = [:]
 
 node {
-    checkout scm
-    config = readYaml file: "library-config.yaml"
-    config["pod_label"] = jobPodLabel()
+  checkout scm
+  config = readYaml file: "library-config.yaml"
+  config["pod_label"] = jobPodLabel()
 }
 
 pipeline {
-   agent {
-     kubernetes {
-        label "${config.pod_label}"
-        defaultContainer "maven"
-        yaml """
-          apiVersion: v1
-          kind: Pod
-          spec:
-              containers:
-              - name: maven
-                image: 'docker.intuit.com/${config.mavenImage}'
-                command:
-                - cat
-                tty: true
-        """
-      }
-   }
-   
-   post {
-       always {
-           customReleaseMetrics(config)
-       }
-   }
-    environment {
-        IBP_MAVEN_SETTINGS_FILE = credentials("${config.mavenSettingsFileId}")
-        MAVEN_ARTIFACTORY_CREDENTIALS = credentials("${config.artifactoryCredentialsId}")
-        MAVEN_ARTIFACTORY_USERID = "${env.MAVEN_ARTIFACTORY_CREDENTIALS_USR}"
-        MAVEN_ARTIFACTORY_TOKEN = "${env.MAVEN_ARTIFACTORY_CREDENTIALS_PSW}"
-        GIT_BRANCH = "${env.BRANCH_NAME}"
+  agent {
+    kubernetes {
+      label "${config.pod_label}"
+      defaultContainer "ruby"
+      yaml """
+        apiVersion: v1
+        kind: Pod
+        spec:
+            containers:
+            - name: ruby
+              image: 'docker.intuit.com/${config.rubyImage}'
+              command:
+              - cat
+              tty: true
+      """
     }
+  }
+   
+  post {
+    always {
+      node('') {
+        checkout scm
+        customReleaseMetrics(config)
+      }
+    }
+  }
 
- parameters {
-    choice(
-      name: 'type',
-      choices: ['Snapshot', 'Release'],
-      description: 'Choose build type "snapshot" or "release" (ignored for PR builds!)')
+  environment {
+    MAVEN_ARTIFACTORY_CREDENTIALS = credentials("${config.artifactoryCredentialsId}")
+    RUBY_ARTIFACTORY_USERID = "${env.MAVEN_ARTIFACTORY_CREDENTIALS_USR}"
+    RUBY_ARTIFACTORY_TOKEN = "${env.MAVEN_ARTIFACTORY_CREDENTIALS_PSW}"
+    RUBYGEMS_HOST = "https://artifact.intuit.com/artifactory/api/gems/rubygems-intuit"
+    GIT_BRANCH = "${env.BRANCH_NAME}"
   }
 
   stages {
-
-    stage('Pull Request Build') {
-        when { changeRequest() }
-        steps {
-          echo 'Compile your library'
-          wrap([$class: 'AnsiColorBuildWrapper', 'colorMapName': 'xterm']) {
-            catchError {
-              mavenBuildPR("-U -B -s settings.xml")
-              }
-           }
-         }
-         post {
-           success {
-             PRPostSuccess(config)
-           }
-           always {
-             PRPostAlways(config)
-           }
-         }
-    }
-
-     stage('Master Snapshot Build') {
-          when {
-            allOf {
-              not { changeRequest() }
-              expression { 'Snapshot' == params.type }
-              branch 'master'
-            }
-          }
-          steps {
-               mavenBuildCI("-U -B -s settings.xml")
-          }
-          post {
-            success {
-              CIPostSuccess(config)
-            }
-            always {
-              CIPostAlways(config)
-            }
+    stage('Build Gem:') {
+      steps {
+        echo 'Build your Gem'
+        wrap([$class: 'AnsiColorBuildWrapper', 'colorMapName': 'xterm']) {
+          container('ruby') {
+            sh """
+              gem install bundler -v 2.5.3
+              bundle _2.5.3_ install
+              gem build memoist.gemspec
+            """
           }
         }
+      }
+    }
 
-    stage('Release') {
+    stage('Run Tests') {
+      steps {
+        echo 'Run Tests'
+        wrap([$class: 'AnsiColorBuildWrapper', 'colorMapName': 'xterm']) {
+          container('ruby') {
+            sh """
+              bundle config set force_ruby_platform true
+              bundle install
+              bundle exec rake
+            """
+          }
+        }
+      }
+    }
+
+    // stage('Run Lint') {
+    //   steps {
+    //     echo 'Run Lint'
+    //     wrap([$class: 'AnsiColorBuildWrapper', 'colorMapName': 'xterm']) {
+    //       container('ruby') {
+    //         sh """
+    //           # TODO: Add rubocop 
+    //           # bundle exec rubocop
+    //         """
+    //       }
+    //     }
+    //   }
+    // }
+
+    stage('Publish Gem') {
       when {
         allOf {
           not { changeRequest() }
-          expression { 'Release' == params.type }
         }
       }
       steps {
-        mavenBuildRelease(config,"-U -B -s settings.xml")
-      }
-      post {
-        success {
-          CIPostSuccess(config)
-        }
-        always {
-          CIPostAlways(config)
+        echo 'Publish your Gem'
+        wrap([$class: 'AnsiColorBuildWrapper', 'colorMapName': 'xterm']) {
+          container('ruby') {
+            sh """
+              # Create the Base64-encoded credential and export the API key in one step.
+              # The 'Basic ' prefix is essential for RubyGems to understand the format.
+              export GEM_HOST_API_KEY="Basic \$(echo -n "${env.RUBY_ARTIFACTORY_USERID}:${env.RUBY_ARTIFACTORY_TOKEN}" | base64 -w 0)"
+
+              # Versions are manually updated in the version.rb file, so we need to pull the value from there
+              export VERSION=\$(ruby -r "./lib/memoist/version.rb" -e "puts Memoist::VERSION")
+
+              gem push --verbose "memoist-\${VERSION}.gem" --host ${env.RUBYGEMS_HOST}
+            """
+          }
         }
       }
     }

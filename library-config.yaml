@@ -4,11 +4,10 @@ asset_alias: Intuit.work.payroll.cybersourceruby
 
 mavenSettingsFileId: ibp-maven-settings-file
 artifactoryCredentialsId: artifactory-cybersource-ruby
-mavenImage: "oicp/standard/maven/amzn-maven-corretto11:5"
+rubyImage: "work-payroll/alpine-ruby-image/service/alpine-ruby-image-build:1.3.0"
 MAIN_BRANCH: "master"
 groupId: com.intuit.work-payroll.cybersource-ruby
 artifactId: cybersource-ruby
-jacocoExecPattern: "target/*.exec"
 
 githubCredentialsId: "github-svc-sbseg-ci"
 orgRepo: work-payroll/cybersource-ruby
