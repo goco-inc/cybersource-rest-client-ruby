@@ -26,7 +26,7 @@ pipeline {
       """
     }
   }
-   
+
   post {
     always {
       node('') {
@@ -45,15 +45,14 @@ pipeline {
   }
 
   stages {
-    stage('Build Gem:') {
+    stage('Build Gem') {
       steps {
-        echo 'Build your Gem'
         wrap([$class: 'AnsiColorBuildWrapper', 'colorMapName': 'xterm']) {
           container('ruby') {
             sh """
               gem install bundler -v 2.5.3
               bundle _2.5.3_ install
-              gem build memoist.gemspec
+              gem build cybersource_rest_client.gemspec
             """
           }
         }
@@ -62,7 +61,6 @@ pipeline {
 
     stage('Run Tests') {
       steps {
-        echo 'Run Tests'
         wrap([$class: 'AnsiColorBuildWrapper', 'colorMapName': 'xterm']) {
           container('ruby') {
             sh """
@@ -75,19 +73,17 @@ pipeline {
       }
     }
 
-    // stage('Run Lint') {
-    //   steps {
-    //     echo 'Run Lint'
-    //     wrap([$class: 'AnsiColorBuildWrapper', 'colorMapName': 'xterm']) {
-    //       container('ruby') {
-    //         sh """
-    //           # TODO: Add rubocop 
-    //           # bundle exec rubocop
-    //         """
-    //       }
-    //     }
-    //   }
-    // }
+    stage('Run Lint') {
+      steps {
+        wrap([$class: 'AnsiColorBuildWrapper', 'colorMapName': 'xterm']) {
+          container('ruby') {
+            sh """
+              bundle exec rubocop
+            """
+          }
+        }
+      }
+    }
 
     stage('Publish Gem') {
       when {
@@ -96,18 +92,12 @@ pipeline {
         }
       }
       steps {
-        echo 'Publish your Gem'
         wrap([$class: 'AnsiColorBuildWrapper', 'colorMapName': 'xterm']) {
           container('ruby') {
             sh """
-              # Create the Base64-encoded credential and export the API key in one step.
-              # The 'Basic ' prefix is essential for RubyGems to understand the format.
               export GEM_HOST_API_KEY="Basic \$(echo -n "${env.RUBY_ARTIFACTORY_USERID}:${env.RUBY_ARTIFACTORY_TOKEN}" | base64 -w 0)"
-
-              # Versions are manually updated in the version.rb file, so we need to pull the value from there
-              export VERSION=\$(ruby -r "./lib/memoist/version.rb" -e "puts Memoist::VERSION")
-
-              gem push --verbose "memoist-\${VERSION}.gem" --host ${env.RUBYGEMS_HOST}
+              export VERSION=\$(ruby -r "./lib/cybersource_rest_client/version.rb" -e "puts CyberSource::VERSION")
+              gem push --verbose "cybersource_rest_client-\${VERSION}.gem" --host ${env.RUBYGEMS_HOST}
             """
           }
         }
