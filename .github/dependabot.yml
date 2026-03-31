@@ -1,0 +1,11 @@
+# for more information about Dependabot, refer to this documentation: 'http://in/dependabot'
+
+version: 2
+updates:
+  - package-ecosystem: "maven" # See documentation for possible values
+    directory: "/" # Location of package manifests
+    schedule:
+      interval: "weekly"
+    ignore: # ignore major versions updates for all libraries. Asset owners to manually bump major versions and test
+      - dependency-name: "*:*"
+        update-types: ["version-update:semver-major"]
