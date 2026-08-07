@@ -30,9 +30,14 @@ Gem::Specification.new do |s|
 
   s.add_runtime_dependency 'typhoeus', '~> 1.5','>=1.5.0'
   s.add_runtime_dependency 'json', '~>2.18', '>= 2.18.1'
-  s.add_runtime_dependency 'activesupport', '~> 7.2', '>= 7.2.3.1'
+  # goco-inc fork: relaxed from '~> 7.2' — goco-api runs Rails 7.1; the SDK only
+  # uses ActiveSupport::Cache::MemoryStore, available well before 7.2.
+  s.add_runtime_dependency 'activesupport', '>= 7.1'
   s.add_runtime_dependency 'interface','~> 1.0', '>= 1.0.5'
-  s.add_runtime_dependency 'jwt', '~> 3.1', '>= 3.1.2'
+  # goco-inc fork: relaxed from '~> 3.1' — goco-api is capped at jwt <3 by other
+  # gems; the SDK's shared-secret/JWT paths use only stable HS256/RS256 APIs that
+  # work on jwt 2.7+. (::JWT::Base64 etc. are in capture_context, not the report path.)
+  s.add_runtime_dependency 'jwt', '>= 2.7'
   s.add_runtime_dependency 'addressable', '~> 2.8', '>= 2.8.8'
   s.add_runtime_dependency 'time', '~>0.4.2'
   s.add_runtime_dependency 'jose', '~> 1.2'
